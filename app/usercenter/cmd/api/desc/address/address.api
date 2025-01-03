@@ -1,0 +1,58 @@
+syntax = "v1"
+
+info(
+    title:   "用户收货地址"
+    desc:    "用户收货地址"
+)
+//============================> UserAddress地址相关 <============================
+type AddressInfo {
+    ContactName string `json:"contactName"`
+    ContactMobile string `json:"contactMobile"`
+    District string `json:"district"`
+    Detail string `json:"detail"`
+    Postcode string `json:"postcode"`
+    IsDefault bool `json:"isDefault"`
+}
+
+type DistrictInfo {
+    Province string `json:"province"`
+    City string `json:"city"`
+    County string `json:"county"`
+    Town string `json:"town,omitempty"`
+}
+
+type DistrictItem{
+    Id int64 `json:"id,omitempty"`
+    Name string `json:"name"`
+}
+type UserAddress{
+    Id int64 `json:"id"`
+    UserId int64 `json:"userId"`
+}
+//============================> UserAddress 添加/修改/删除 <============================
+type (
+    AddressListReq {
+        Page int64 `json:"page,range=[1:]"`
+        PageSize int64 `json:"pageSize"`
+    }
+    AddressListResp {
+        List []UserAddress `json:"list"`
+    }
+)
+
+type (
+    AddAddressReq {
+        AddressInfo
+    }
+    AddAddressResp {
+        Id int64 `json:"id"`
+    }
+)
+type (
+    ConvertAddressReq {
+        OriginalAddressInfo string `json:"originalAddressInfo"`
+    }
+    ConvertAddressResp {
+        AddressInfo
+    }
+)
