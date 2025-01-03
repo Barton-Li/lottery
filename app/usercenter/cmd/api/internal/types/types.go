@@ -252,6 +252,7 @@ type User struct {
 type UserAddress struct {
 	Id     int64 `json:"id"`
 	UserId int64 `json:"userId"`
+	AddressInfo
 }
 
 type UserCommentInfo struct {
