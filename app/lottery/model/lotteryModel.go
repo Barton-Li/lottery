@@ -22,6 +22,9 @@ type (
 		UpdatePublishTime(ctx context.Context, id int64) error
 		LotteryList(ctx context.Context, limit, selected, lastId int64) ([]*Lottery, error)
 		GetLastId(ctx context.Context) (int64, error)
+		//登录后获取抽奖列表
+		GetLotteryListAfterLogin(ctx context.Context, size, isSelected, lastId int64, lotteryIds []int64) ([]*Lottery, error)
+		FindAllByUserId(Userid, LastId, Size, IsAnnounced int64) ([]*Lottery2, error)
 	}
 
 	customLotteryModel struct {
@@ -101,6 +104,96 @@ func (c *customLotteryModel) GetLastId(ctx context.Context) (int64, error) {
 	err := c.QueryRowsNoCacheCtx(ctx, &resp, query)
 	if err != nil {
 		return 0, errors.Wrapf(xerr.NewErrCode(xerr.DB_GETLASTID_ERROR), "get last id error: %s", err)
+	}
+	return resp, nil
+}
+
+// GetLotteryListAfterLogin 获取登录后的抽奖列表。
+// 该方法根据用户登录状态、筛选条件和最后一条记录的ID来获取抽奖列表。
+// 参数:
+//   ctx - 上下文，用于传递请求范围的上下文信息。
+//   size - 请求数量，用于限制返回的抽奖数量。
+//   isSelected - 筛选标志，用于区分是否选定的抽奖。
+//   lastId - 上一次请求的最后一条记录的ID，用于分页查询。
+//   lotteryIds - 抽奖ID列表，用于排除已知的抽奖。
+// 返回值:
+//   []*Lottery - 返回一个抽奖对象列表。
+//   error - 如果查询过程中发生错误，返回错误信息。
+
+func (c *customLotteryModel) GetLotteryListAfterLogin(ctx context.Context, size, isSelected, lastId int64, lotteryIds []int64) ([]*Lottery, error) {
+	// 初始化查询字符串变量
+	var query string
+
+	// 如果没有提供抽奖ID列表，则根据是否选定状态构建查询语句
+	if len(lotteryIds) == 0 {
+		// 如果提供了选定状态（非零），则查询已选定但未公布的抽奖
+		if isSelected != 0 {
+			query = fmt.Sprintf("select %s from %s where is_selected=1 and is_announced=0 and publish_time is not null and id<? order by id desc limit ?", lotteryRows, c.table)
+		} else {
+			// 否则，查询所有未公布的抽奖
+			query = fmt.Sprintf("select %s from %s where is_announced=0 and publish_time is not null and id<? order by id desc limit ?", lotteryRows, c.table)
+		}
+
+		// 初始化返回的抽奖列表
+		var resp []*Lottery
+
+		// 执行查询并解析结果为Lottery对象列表
+		err := c.QueryRowsNoCacheCtx(ctx, &resp, query, lastId, size)
+		if err != nil {
+			// 如果查询出错，包装错误并返回
+			return nil, errors.Wrapf(xerr.NewErrCode(xerr.DB_GETLOTTERYLIST_AFTERLOGIN_ERROR), "get lottery list error: %s", err)
+		}
+
+		// 返回查询到的抽奖列表
+		return resp, nil
+	}
+
+	// 初始化抽奖ID字符串
+	var lotteryIdsStr string
+
+	// 遍历提供的抽奖ID列表，构建逗号分隔的ID字符串
+	for _, lotteryId := range lotteryIds {
+		lotteryIdsStr += fmt.Sprintf("%v,", lotteryId)
+	}
+
+	// 如果抽奖ID列表不为空，去掉最后一个多余的逗号
+	if len(lotteryIds) != 0 {
+		lotteryIdsStr = lotteryIdsStr[:len(lotteryIdsStr)-1]
+	}
+
+	// 根据是否选定状态（非零）构建排除特定ID的查询语句
+	if isSelected != 0 {
+		query = fmt.Sprintf("select %s from %s where is_selected = 1 and is_announced = 0 and publish_time IS NOT NULL and id < ? and id not in (%s) order by id desc limit ?", lotteryRows, c.table, lotteryIdsStr)
+	} else {
+		query = fmt.Sprintf("select %s from %s where is_announced = 0 and publish_time IS NOT NULL and id < ? and id not in (%s) order by id desc limit ?", lotteryRows, c.table, lotteryIdsStr)
+	}
+
+	// 初始化返回的抽奖列表
+	var resp []*Lottery
+
+	// 执行查询并解析结果为Lottery对象列表
+	err := c.QueryRowsNoCacheCtx(ctx, &resp, query, lastId, size)
+	if err != nil {
+		// 如果查询出错，包装错误并返回
+		return nil, errors.Wrapf(xerr.NewErrCode(xerr.DB_GETLOTTERYLIST_AFTERLOGIN_ERROR), "get lottery list error: %s", err)
+	}
+
+	// 返回查询到的抽奖列表
+	return resp, nil
+}
+
+type Lottery2 struct {
+	Id   int64     `db:"id"`
+	Time time.Time `db:"time"`
+}
+
+// FindAllByUserId 获取当前用户发起的所有抽奖
+func (c *customLotteryModel) FindAllByUserId(UserId, LastId, Size, IsAnnounced int64) ([]*Lottery2, error) {
+	query := fmt.Sprintf("SELECT id ,create_time as time FROM %s WHERE user_id = ? AND is_announced = ? AND id < ? ORDER BY id DESC LIMIT ?", c.table)
+	var resp []*Lottery2
+	err := c.QueryRowsNoCache(&resp, query, UserId, IsAnnounced, LastId, Size)
+	if err != nil {
+		return nil, errors.Wrapf(xerr.NewErrCode(xerr.DB_FIND_ALLBYUSERID_ERROR), "FindAllByUserId, UserId:%v, error: %v", UserId, err)
 	}
 	return resp, nil
 }

@@ -17,6 +17,7 @@ type (
 	PrizeModel interface {
 		prizeModel
 		FindByLotteryId(ctx context.Context, lotteryId int64) ([]*Prize, error)
+		FindPageByLotteryId(ctx context.Context, lotteryId int64, offset int64, limit int64) ([]*Prize, error)
 	}
 
 	customPrizeModel struct {
@@ -36,6 +37,15 @@ func (m *customPrizeModel) FindByLotteryId(ctx context.Context, lotteryId int64)
 	err := m.QueryRowsNoCacheCtx(ctx, &resp, query, lotteryId)
 	if err != nil {
 		return nil, errors.Wrapf(xerr.NewErrCode(xerr.DB_FIND_PRIZES_BYLOTTERYID_ERROR), "query prizes by lotteryId:%d error:%s,resp:%v,query:%v", lotteryId, err, resp, query)
+	}
+	return resp, nil
+}
+func (m *customPrizeModel) FindPageByLotteryId(ctx context.Context, lotteryId int64, offset int64, limit int64) ([]*Prize, error) {
+	var resp []*Prize
+	query := fmt.Sprintf("select * from %s where lottery_id = ? limit ?,?", m.table)
+	err := m.QueryRowsNoCacheCtx(ctx, &resp, query, lotteryId, (offset-1)*limit, limit)
+	if err != nil {
+		return nil, errors.Wrapf(xerr.NewErrCode(xerr.DB_FIND_PRIZES_BYLOTTERYID_ERROR), "query prizes by lotteryId:%d error:%s, resp:%v, query:%v", lotteryId, err, resp, query)
 	}
 	return resp, nil
 }
