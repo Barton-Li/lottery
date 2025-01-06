@@ -24,7 +24,12 @@ func NewCheckUserCreateLotteryLogic(ctx context.Context, svcCtx *svc.ServiceCont
 }
 
 func (l *CheckUserCreateLotteryLogic) CheckUserCreateLottery(in *pb.CheckUserCreateLotteryReq) (*pb.CheckUserCreateLotteryResp, error) {
-	// todo: add your logic here and delete this line
-
-	return &pb.CheckUserCreateLotteryResp{}, nil
+	id, err := l.svcCtx.LotteryModel.GetLotteryIdByUserId(l.ctx, in.UserId)
+	if err != nil {
+		return nil, err
+	}
+	if id == nil {
+		return &pb.CheckUserCreateLotteryResp{IsCreate: 0}, nil
+	}
+	return &pb.CheckUserCreateLotteryResp{IsCreate: 1}, nil
 }

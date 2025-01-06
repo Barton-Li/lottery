@@ -10,8 +10,11 @@ require (
 	github.com/golang-jwt/jwt/v4 v4.5.1
 	github.com/hibiken/asynq v0.25.1
 	github.com/jinzhu/copier v0.4.0
+	github.com/jinzhu/now v1.1.5
+	github.com/liunian1004/pdd v0.0.0-20210413025727-4741a52b9422
 	github.com/pkg/errors v0.9.1
 	github.com/silenceper/wechat/v2 v2.0.0
+	github.com/wechatpay-apiv3/wechatpay-go v0.2.20
 	github.com/zeromicro/go-queue v1.2.2
 	github.com/zeromicro/go-zero v1.7.4
 	google.golang.org/grpc v1.65.0
@@ -21,6 +24,7 @@ require (
 require (
 	filippo.io/edwards25519 v1.1.0 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
+	github.com/bitly/go-simplejson v0.5.0 // indirect
 	github.com/bradfitz/gomemcache v0.0.0-20190913173617-a41fca850d0b // indirect
 	github.com/cenkalti/backoff/v4 v4.3.0 // indirect
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
@@ -59,8 +63,10 @@ require (
 	github.com/mattn/go-isatty v0.0.20 // indirect
 	github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd // indirect
 	github.com/modern-go/reflect2 v1.0.2 // indirect
+	github.com/moul/http2curl v1.0.0 // indirect
 	github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822 // indirect
 	github.com/openzipkin/zipkin-go v0.4.3 // indirect
+	github.com/parnurzeal/gorequest v0.2.15 // indirect
 	github.com/pelletier/go-toml/v2 v2.2.2 // indirect
 	github.com/pierrec/lz4/v4 v4.1.21 // indirect
 	github.com/prometheus/client_golang v1.20.5 // indirect

@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"github.com/pkg/errors"
 	"github.com/zeromicro/go-zero/core/stores/cache"
+	"github.com/zeromicro/go-zero/core/stores/sqlc"
 	"github.com/zeromicro/go-zero/core/stores/sqlx"
 	"lottery/common/xerr"
 	"time"
@@ -22,6 +23,12 @@ type (
 		UpdatePublishTime(ctx context.Context, id int64) error
 		LotteryList(ctx context.Context, limit, selected, lastId int64) ([]*Lottery, error)
 		GetLastId(ctx context.Context) (int64, error)
+		GetLotterysByLessThanCurrentTime(ctx context.Context, currentTime time.Time, announceType int64) ([]int64, error)
+		GetTypeIs2AndIsNotAnnounceLotterys(ctx context.Context, announceType int64) ([]*Lottery, error)
+		UpdateLotteryStatus(ctx context.Context, lotteryID int64) error
+		GetLotteryIdByUserId(ctx context.Context, UserId int64) (*int64, error)
+		GetTodayLotteryIdsByUserId(ctx context.Context, UserId int64) ([]int64, error)
+		GetWeekLotteryIdsByUserId(ctx context.Context, UserId int64) ([]int64, error)
 		//登录后获取抽奖列表
 		GetLotteryListAfterLogin(ctx context.Context, size, isSelected, lastId int64, lotteryIds []int64) ([]*Lottery, error)
 		FindAllByUserId(Userid, LastId, Size, IsAnnounced int64) ([]*Lottery2, error)
@@ -194,6 +201,72 @@ func (c *customLotteryModel) FindAllByUserId(UserId, LastId, Size, IsAnnounced i
 	err := c.QueryRowsNoCache(&resp, query, UserId, IsAnnounced, LastId, Size)
 	if err != nil {
 		return nil, errors.Wrapf(xerr.NewErrCode(xerr.DB_FIND_ALLBYUSERID_ERROR), "FindAllByUserId, UserId:%v, error: %v", UserId, err)
+	}
+	return resp, nil
+}
+func (c *customLotteryModel) GetLotteryIdByUserId(ctx context.Context, UserId int64) (*int64, error) {
+	query := fmt.Sprintf("select id from %s where user_id = ? and publish_time is not null", c.table)
+	//	return conn.QueryRowCtx(ctx, v, query, UserId)
+	//}
+	var resp int64
+	err := c.QueryRowNoCacheCtx(ctx, &resp, query, UserId)
+	switch err {
+	case nil:
+		return &resp, nil
+	case sqlc.ErrNotFound:
+		//errors.Wrapf(xerr.NewErrCode(xerr.DB_LOTTERYID_NOTFOUND), "GetLotteryIdByUserId, UserId:%v, error: %v", UserId, err)
+		return nil, nil
+	default:
+		return nil, errors.Wrapf(xerr.NewErrCode(xerr.DB_GET_LOTTERYID_BYUSERID_ERROR), "FindOne, UserId:%v, error: %v", UserId, err)
+	}
+}
+func (c *customLotteryModel) GetLotterysByLessThanCurrentTime(ctx context.Context, currentTime time.Time, announceType int64) ([]int64, error) {
+	var resp []int64
+	query := fmt.Sprintf("select id from %s where announce_type=? and is_announced=0 and announce_time<=? ", c.table)
+	err := c.QueryRowsNoCacheCtx(ctx, &resp, query, announceType, currentTime)
+	if err != nil {
+		return nil, errors.Wrapf(xerr.NewErrCode(xerr.GETLOTTERY_BYLESSTHAN_CURRENTTIME_ERROR), "get lottery list error: %s", err)
+	}
+	return resp, nil
+}
+func (c *customLotteryModel) GetTypeIs2AndIsNotAnnounceLotterys(ctx context.Context, announceType int64) ([]*Lottery, error) {
+	var resp []*Lottery
+	query := fmt.Sprintf("select %s from %s where announce_type=? and is_announced=0 and publish_time is not null ", lotteryRows, c.table)
+	err := c.QueryRowsNoCacheCtx(ctx, &resp, query, announceType)
+	if err != nil {
+		return nil, errors.Wrapf(xerr.NewErrCode(xerr.GET_TYPEIS2_AND_ISNOT_ANNOUNCE_LOTTERYS_ERROR), "get lottery list error: %s", err)
+	}
+	return resp, nil
+}
+func (c *customLotteryModel) UpdateLotteryStatus(ctx context.Context, lotteryId int64) error {
+	// 准备更新数据的SQL语句
+	lotteryLotteryIdKey := fmt.Sprintf("%s%v", cacheLotteryLotteryIdPrefix, lotteryId)
+	query := fmt.Sprintf("UPDATE %s SET is_announced = 1 WHERE id = ?", c.table)
+
+	_, err := c.ExecCtx(ctx, func(ctx context.Context, conn sqlx.SqlConn) (sql.Result, error) {
+		return conn.Exec(query, lotteryId)
+	}, lotteryLotteryIdKey)
+	if err != nil {
+		return errors.Wrapf(xerr.NewErrCode(xerr.UPDATE_LOTTERY_STATUS_ERROR), "UpdateLotteryStatus, lotteryId:%v error: %v", lotteryId, err)
+	}
+	return nil
+}
+func (c *customLotteryModel) GetTodayLotteryIdsByUserId(ctx context.Context, UserId int64) ([]int64, error) {
+	var resp []int64
+	query := fmt.Sprintf("SELECT id FROM %s WHERE user_id = ? AND DATE(publish_time) = CURDATE()", c.table)
+	err := c.QueryRowsNoCacheCtx(ctx, &resp, query, UserId)
+	if err != nil {
+		return nil, errors.Wrapf(xerr.NewErrCode(xerr.DB_GET_WEEKLOTTERYIDS_BYUSREID_ERROR), "GetTodayLotteryIdsByUserId, user_id:%v, error: %v", UserId, err)
+	}
+	return resp, nil
+}
+
+func (c *customLotteryModel) GetWeekLotteryIdsByUserId(ctx context.Context, UserId int64) ([]int64, error) {
+	var resp []int64
+	query := fmt.Sprintf("SELECT id FROM %s WHERE user_id = ? AND YEARWEEK(publish_time) = YEARWEEK(CURDATE())", c.table)
+	err := c.QueryRowsNoCacheCtx(ctx, &resp, query, UserId)
+	if err != nil {
+		return nil, errors.Wrapf(xerr.NewErrCode(xerr.DB_GET_TODAYLOTTERYIDSBYUSERID_ERROR), "GetWeekLotteryIdsByUserId, user_id:%v, error: %v", UserId, err)
 	}
 	return resp, nil
 }
